@@ -1,57 +1,156 @@
 #!/bin/bash
 
-# Checking the setup for todo -- creating a file in the same directory
+if [[ ! -d $PWD/todo-cli/ ]]; then
+    mkdir -p $PWD/todo-cli
+fi
 
-# Operations of todo
-# - create (create task)
-# - read (list the pending tasks)
-# - update (update the existing task)
-# - delete (delete user specified or completed task)
+declare -i counter
+declare -i failed
 
-# use flag while using todo command
-# Always check the setup is done or not
+folder=$PWD/todo-cli
+file=$folder/to-do.txt
+completed=$folder/completed.txt
 
-# In file, a new rowID should be created upon adding a new task into the file.
-# use fonts, emoji(s) to make it more user-friendly
-# user can delete a task in a file by either providing a rowID or by using task name.
-
-# every action should be recursive to make more interactive.
-
-fileName=todo-list.txt
-path=`pwd`
-
-function todoSetup() {
-    path=$1
-    if [ ! -f $path/$fileName ]
-    then
-        echo "⚙️  Preparing for the setup..."
-        touch $path/$fileName
-        sleep 1
-        echo "✨ Setup Done!"
+function setup(){
+    flag1=0
+    flag2=0
+    if [[ ! -f $file ]]; then
+        touch $file
+        flag1=1
+    fi
+    if [[ ! -f $completed ]]; then
+        touch $completed
+        flag2=1
+    fi
+    if [[ $flag1 == 1 && $flag2 == 1 ]]; then
+        echo "Setup Done... 🍻"
     fi
 }
 
-function createTask() {
-    task=$1
-    rowID=`date +"%H%M%S"`
-    echo "$rowID|$task" >> $path/$fileName
+function showTask(){
+    printf "▪▪▪ 📌 Tasks To Be Done ▪▪▪\n"
+    cat -n $file
+    printf "\n"
+    printf "▪▪▪ ✅ Completed ▪▪▪\n"
+    cat -n $completed
+    printf "\n"
 }
 
-function showTasks() {
-    cat $path/$fileName
+function emptyTask(){
+    truncate -s0 $file $completed
 }
 
-function clearAllTasks() {
-    truncate -s 0 $path/$fileName
+function addTask(){
+    taskID=$(date +%Y-%m-%d🔹%H:%M:%S)
+    task="$1"
+    echo "${task}|${taskID}" >> $file
 }
 
-todoSetup $path
-createTask "Learn Django."
-showTasks
-echo
-echo "Do u want to clear all the tasks? - y/n"
-read option
-if [ $option=='y'  ]
-then
-    clearAllTasks
-fi
+function splitTask(){
+    param=$(echo "$1" | sed "s/,/ /g")
+    echo "$param"
+}
+
+function doneTask(){
+    rows=$(splitTask "$1")
+    for row in "$rows"
+    do
+        doneID=$(date +%Y-%m-%d🔹%H:%M:%S)
+        dTask=$(sed -n "${row}p" $file | cut -d'|' -f1)
+        echo "${dTask}|${doneID}" >> $completed
+        sed -i "${row}d" $file
+    done
+}
+
+function removeTask(){
+    rows=$(splitTask "$1")
+    for row in $(echo $rows)
+    do
+        sed -i "${row}d" $file
+    done
+}
+
+function multipleTaskAdd(){
+    printf "Enter task(s) to be added:\n"
+    counter=0
+    while read task; do
+        [ -z "$task" ] && break
+        counter+=1
+        taskID=$(date +%Y-%m-%d🔹%H:%M:%S)
+        echo "${task}|${taskID}" >> $file
+    done
+    printf "➕${counter} task(s) added..."
+}
+
+function multipleTaskUpdate(){
+    read -p "Enter task(s) to be updated: " rows
+    ids=$(splitTask "$rows")
+    counter=0
+    for id in $(echo $ids)
+    do
+        line=$(sed -n "${id}p" $file)
+        uTask=$("$line" | cut -d'|' -f1)
+        printf "${uTask}-\n"
+        read -r rTask
+        sed "s/${uTask}/${rTask}/" $file
+        if [[ "$?" -ne 0 ]]; then
+            printf "❗ Not updated Properly...\n"
+            failed+=1
+        else
+            counter+=1
+        fi
+    done
+    printf "✔${counter} task(s) updated, ❌${failed} task(s) failed to be updated..."
+}
+
+function multipleTask(){
+    printf "Mutiple task(s) to add/update:\n"
+    read -p "a/u》" operation
+    if [[ $operation == 'a' || $operation == 'A' ]]; then
+        multipleTaskAdd
+    elif [[ $operation == 'u' || $operation == 'U' ]]; then
+        multipleTaskUpdate
+    else
+        printf "Enter either 'a/A' or 'u/U' for the operation..."
+    fi
+}
+
+#Main
+setup
+
+args=$(getopt -a -n todo -o a:smd:r:e --long add:,show,multiple,done:,remove:,empty -- "$@")
+
+eval set -- "$args"
+
+while :
+do
+    case $1 in
+        -a|--add)
+            addTask "$2";
+            shift 2;;
+        -s|--show)
+            showTask;
+            shift;;
+        -d|--done)
+            doneTask "$2";
+            shift 2;;
+        -m|--multi)
+            multipleTask;
+            shift;;
+        -r|--remove)
+            removeTask "$2";
+            shift 2;;
+        -e|--empty)
+            emptyTask;
+            shift;;
+        --)
+            shift;
+            break;;
+        ?)
+            usage;
+            shift;
+            exit 2;;
+    esac
+done
+
+
