@@ -146,10 +146,14 @@ function multipleTask(){
     fi
 }
 
+function help(){
+    printf "help...\n"
+}
+
 #Main
 setup
 
-args=$(getopt -a -n todo -o a:smd:r:e --long add:,show,multiple,done:,remove:,empty -- "$@")
+args=$(getopt -a -n todo -o a:smd:r:eh --long add:,show,multiple,done:,remove:,empty,help -- "$@")
 
 eval set -- "$args"
 
@@ -173,6 +177,9 @@ do
             shift 2;;
         -e|--empty)
             emptyTask;
+            shift;;
+        -h|--help)
+            help;
             shift;;
         --)
             shift;
