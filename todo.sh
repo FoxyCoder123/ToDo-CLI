@@ -63,12 +63,19 @@ function doneTask(){
     rows=$(splitTask "$1")
     for row in $(echo "$rows")
     do
-        doneID=$(date +%Y-%m-%d🔹%H:%M:%S)
+        doneID=$(date +%Y-%m-%d🟢%H:%M:%S)
         dTask=$(sed -n "${row}p" $file)
         echo "$(echo "$dTask" | cut -d"|" -f1)|${doneID}" >> $completed
         sed -i "s/${dTask}//" $file
     done
     sed -i "/^$/d" $file
+    if [[ ! -s $file ]]; then
+        printf "█▀█ █▀▀ █░░ ▄▀█ ▀▄▀   █▄░█ █▀▄   █░█ ▄▀█ █░█ █▀▀   █▀ █▀█ █▀▄▀█ █▀▀   █▀▀ █▀█ █▀▀ █▀▀ █▀▀ █▀▀\n"
+        printf "█▀▄ ██▄ █▄▄ █▀█ █░█   █░▀█ █▄▀   █▀█ █▀█ ▀▄▀ ██▄   ▄█ █▄█ █░▀░█ ██▄   █▄▄ █▄█ █▀░ █▀░ ██▄ ██▄\n"
+        printf "\n"
+        printf "█▀▄ █▀█ █▄░█ █▀▀   █░█░█ █ ▀█▀ █░█   ▄▀█ █░░ █░░   ▀█▀ ▄▀█ █▀ █▄▀ █▀\n"
+        printf "█▄▀ █▄█ █░▀█ ██▄   ▀▄▀▄▀ █ ░█░ █▀█   █▀█ █▄▄ █▄▄   ░█░ █▀█ ▄█ █░█ ▄█\n"
+    fi
 }
 
 function removeTask(){
@@ -150,10 +157,51 @@ function help(){
     printf "help...\n"
 }
 
+function priorityTask(){
+    #"Tasks Priority" can be: 
+        # 'H' -> High (red)
+        # 'M' -> Medium (orange)
+        # 'L' -> Low (yellow)
+    printf "Enter Task(s) priority level\n"
+    printf "type h ➜ High; m ➜ Medium; l ➜ Low\n"    
+    while true; do
+        read -p "h/m/l》" operation
+        read -p "Enter taskID(s): " tasks
+        rows=$(splitTask "$tasks")
+        if [[ $operation == 'h' || $operation == 'H' ]]; then
+            for row in $(echo "$rows")
+            do
+                pTask=$(sed -n "${row}p" $file)
+                sed -i "s/${pTask}/🔴 ${pTask}/" $file
+            done    
+        elif [[ $operation == 'm' || $operation == 'M' ]]; then
+            for row in $(echo "$rows")
+            do
+                pTask=$(sed -n "${row}p" $file)
+                sed -i "s/${pTask}/🟠 ${pTask}/" $file
+            done            
+        elif [[ $operation == 'l' || $operation == 'L' ]]; then
+            for row in $(echo "$rows")
+            do
+                pTask=$(sed -n "${row}p" $file)
+                sed -i "s/${pTask}/🟡 ${pTask}/" $file
+            done            
+        else
+            printf "enter either 'h/H' or 'm/M' or 'l/L for the assignment...\n'"
+        fi
+        read -p "Done!! Wanna continue (y/n) ➜ " opinion
+        if [[ $opinion == 'n' ]]; then
+            printf "____________________________________\n\n"
+            break
+        fi
+        printf "____________________________________\n\n"
+    done    
+}
+
 #Main
 setup
 
-args=$(getopt -a -n todo -o a:smd:r:eh --long add:,show,multiple,done:,remove:,empty,help -- "$@")
+args=$(getopt -a -n todo -o a:smd:r:ehp --long add:,show,multiple,done:,remove:,empty,help,priority -- "$@")
 
 eval set -- "$args"
 
@@ -181,11 +229,14 @@ do
         -h|--help)
             help;
             shift;;
+        -p|--priority)
+            priorityTask;
+            shift;;
         --)
             shift;
             break;;
         ?)
-            usage;
+            help;
             shift;
             exit 2;;
     esac
