@@ -1,2 +1,7 @@
 # ToDo-CLI
-A ToDo App in CLI using bash script
+
+- todo-cli app written in bash
+- **Productively manage tasks** by staying in terminal itself 🤩
+
+---
+
